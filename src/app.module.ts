@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { validationSchema } from './config/validation.schema';
+import { MarcasModule } from './marcas/marcas.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { validationSchema } from './config/validation.schema';
         mode: 1  // 1 = THICK mode, 0 = THIN mode
       }
     }),
+    MarcasModule,
   ],
 })
 export class AppModule {}

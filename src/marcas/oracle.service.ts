@@ -1,5 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as oracledb from 'oracledb';
+import { 
+  ManifiestoNotFoundException, 
+  GuiaNotFoundException, 
+  DatabaseConnectionException,
+  InvalidManifiestoFormatException,
+  InvalidGuiaFormatException 
+} from '../common/exceptions/business.exception';
 
 @Injectable()
 export class OracleService {
@@ -46,7 +53,7 @@ export class OracleService {
         const dbName = process.env.DB_NAME;
 
         if (!dbUsername || !dbPassword || !dbHost || !dbName) {
-            throw new Error('Missing required database environment variables');
+            throw new DatabaseConnectionException('Missing required database environment variables');
         }
 
         try {
@@ -60,7 +67,7 @@ export class OracleService {
             return connection;
         } catch (error) {
             this.logger.error('❌ Failed to connect to Oracle database:', error.message);
-            throw new Error(`Database connection failed: ${error.message}`);
+            throw new DatabaseConnectionException(error.message);
         }
     }
 
@@ -130,6 +137,197 @@ export class OracleService {
         }
     }
 
+    async obtenerIdManifiestoPorNumero(numeroManifiesto: string): Promise<number> {
+        // Validar formato del número de manifiesto
+        if (!/^\d+$/.test(numeroManifiesto)) {
+            throw new InvalidManifiestoFormatException(numeroManifiesto);
+        }
+
+        const connection = await this.getConnection();
+        try {
+            this.logger.log(`🔍 Obteniendo ID de manifiesto para número: ${numeroManifiesto}`);
+
+            const query = `
+                SELECT id 
+                FROM documentos.DOCDOCUMENTOBASE 
+                WHERE tipodocumento = 'MFTOC' 
+                  AND activo = 'S' 
+                  AND numeroexterno = :numeroManifiesto
+            `;
+
+            const result = await connection.execute(query, {
+                numeroManifiesto: numeroManifiesto
+            });
+
+            if (result.rows && result.rows.length > 0) {
+                const idManifiesto = Number(result.rows[0][0]);
+                this.logger.log(`✅ ID de manifiesto encontrado: ${idManifiesto}`);
+                return idManifiesto;
+            }
+
+            this.logger.log(`❌ No se encontró manifiesto con número: ${numeroManifiesto}`);
+            throw new ManifiestoNotFoundException(numeroManifiesto);
+
+        } catch (error) {
+            if (error instanceof ManifiestoNotFoundException || error instanceof InvalidManifiestoFormatException) {
+                throw error;
+            }
+            this.logger.error('❌ Error obteniendo ID de manifiesto:', error);
+            throw new DatabaseConnectionException(error.message);
+        } finally {
+            if (connection) {
+                await connection.close();
+            }
+        }
+    }
+
+    async consultarGuiasCourier(numeroManifiesto: string, guiaCourier?: string) {
+        // Validar formato de guía courier si se proporciona
+        if (guiaCourier && !/^[A-Z0-9]+$/.test(guiaCourier)) {
+            throw new InvalidGuiaFormatException(guiaCourier);
+        }
+
+        let connection;
+        try {
+            this.logger.log(`🔍 Consultando guías courier para manifiesto: ${numeroManifiesto}`);
+
+            // Primero obtener el ID del manifiesto
+            const idManifiesto = await this.obtenerIdManifiestoPorNumero(numeroManifiesto);
+            this.logger.log(`✅ ID de manifiesto obtenido: ${idManifiesto}`);
+
+            // Ahora consultar las guías usando el ID del manifiesto
+            connection = await this.getConnection();
+            
+            const query = `
+                SELECT r.tiporelacion AS tiporelacion,
+                       r.docorigen AS docorigen,
+                       r.id AS id,
+                       r.observacion AS observacion,
+                       r.fecha AS fecharelacion,
+                       docbase.tipodocumento AS tipodocumento,
+                       docbase.numeroexterno AS numerodoc,
+                       docbase.idemisor AS emisor,
+                       docbase.emisor AS nombreemisor,
+                       docbase.fechaemision AS fechaemision,
+                       docbase.id AS iddocdestino,
+                       docbase.fechacreacion AS fechaactiva,
+                       docbase.version AS version,
+                       (SELECT sentido
+                          FROM doctrandoctransporte dt
+                         WHERE dt.id = docbase.id) sentidooperacion,
+                       DECODE((SELECT tipoestado
+                                FROM docestados est
+                               WHERE docbase.tipodocumento = est.tipodocumento
+                                 AND docbase.id = est.documento
+                                 AND est.tipoestado = 'VIS'
+                                 AND est.activa = 'S'
+                                 AND ROWNUM = 1),
+                              NULL,
+                              'NO',
+                              'SI') esrevisado,
+                       DECODE((SELECT tipoestado
+                                FROM docestados est
+                               WHERE docbase.tipodocumento = est.tipodocumento
+                                 AND docbase.id = est.documento
+                                 AND est.tipoestado = 'CON MARCA'
+                                 AND est.activa = 'S'
+                                 AND ROWNUM = 1),
+                              NULL,
+                              'NO',
+                              'SI') esmarcado,
+                       (SELECT nombreparticipante
+                          FROM docparticipacion
+                         WHERE documento = docbase.id
+                           AND rol = 'CNTE') consignante,
+                       (SELECT NUMEROID
+                          FROM docparticipacion
+                         WHERE documento = docbase.id
+                           AND rol = 'CONS') RUTconsignatario,
+                       (SELECT nombreparticipante
+                          FROM docparticipacion
+                         WHERE documento = docbase.id
+                           AND rol = 'CONS') consignatario,
+                       courier_consultas.gtime_getproductosasstring(docbase.id) productos,
+                       courier_consultas.gtime_getmarcasasstring(docbase.id) marcas,
+                       courier_consultas.gtime_getvistosbuenos(docbase.id) vistosbuenos,
+                       courier_consultas.gtime_gettransbordos(docbase.id) transbordos,
+                       courier_consultas.gtime_getestado(docbase.id) estadoactual,
+                       courier_consultas.gtime_geMotivoSeleccion(docbase.id) motivoseleccion,
+                       dtran.totalbultos,
+                       dtran.totalpeso,
+                       dtran.valordeclarado
+                  FROM documentos.docdocumentobase docbase
+                  left join doctransporte.doctrandoctransporte dtran
+                    on docbase.id = dtran.id
+                  left join documentos.docrelaciondocumento r
+                    on r.docdestino = :idManifiesto
+                   and r.tiporelacion = 'REF'
+                   AND r.activo = 'S'
+                 WHERE docbase.id = r.docorigen
+                   AND docbase.tipodocumento = 'GTIME'
+                   AND docbase.activo = 'S'
+                   AND docbase.id NOT IN (SELECT documento
+                                          FROM docestados de
+                                         WHERE de.documento = docbase.id
+                                           AND de.tipoestado = 'ANU'
+                                           AND de.activa = 'S')
+                 order by rutconsignatario
+            `;
+
+            const result = await connection.execute(query, { idManifiesto: idManifiesto });
+            let guias = result.rows || [];
+            
+            if (guiaCourier && guiaCourier.trim()) {
+                guias = guias.filter(guia => 
+                    guia[6] && guia[6].toString().toUpperCase() === guiaCourier.toUpperCase()
+                );
+            }
+
+            const processedGuias = guias.map(guia => ({
+                Oid: { Id: guia[1] },
+                NumeroDoc: guia[6] || '',
+                NombreEmisor: guia[8] || '',
+                TotalBultos: guia[25] || 0,
+                TotalPeso: guia[26] || 0,
+                TotalValor: guia[27] || 0,
+                Consignante: guia[20] || '',
+                Consignatario: guia[22] || '',
+                Numero: guia[6] || '',
+                TipoDoc: 'GUIA TIME',
+                CodigoTipoDoc: guia[5] || '',
+                EstadoActual: guia[24] || '',
+                Productos: guia[21] || '',
+                Transbordos: guia[23] || '',
+                VistosBuenos: guia[22] || '',
+                FechaCreacion: guia[10] || '',
+                rutconsignatario: guia[21] || '',
+                MotivoSeleccion: guia[25] || '',
+                Detalle: 'Más Info.',
+                Transito: guia[13] === 'TR' ? 'SI' : 'NO',
+                verPDF: `<img src="/WebFiscalizaciones/resources/images/crobat3.jpg" style="cursor:pointer;" width="20" height="20" onclick="javascript:getPDF('${guia[1]}','1','GTIME');" >`
+            }));
+
+            this.logger.log(`✅ Consulta exitosa: ${processedGuias.length} guías encontradas`);
+            return {
+                guias: processedGuias,
+                rowsCount: processedGuias.length
+            };
+
+        } catch (error) {
+            if (error instanceof ManifiestoNotFoundException || 
+                error instanceof InvalidManifiestoFormatException ||
+                error instanceof InvalidGuiaFormatException) {
+                throw error;
+            }
+            this.logger.error('❌ Error en consultarGuiasCourier:', error);
+            throw new DatabaseConnectionException(error.message);
+        } finally {
+            if (connection) {
+                await connection.close();
+            }
+        }
+    }
+
     async modificarMarcaGuia(
         idGuia: number,
         motivoMarca: string,
@@ -139,8 +337,6 @@ export class OracleService {
         try {
             this.logger.log(`🔧 Modificando marca para guía: ${idGuia}`);
 
-            // Aquí implementarías la lógica para modificar la marca
-            // Por ahora retornamos un mensaje de confirmación
             return {
                 success: true,
                 message: `Marca modificada para guía ${idGuia}`,

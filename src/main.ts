@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import * as oracledb from 'oracledb';
 
 async function bootstrap() {
@@ -34,8 +36,22 @@ async function bootstrap() {
             whitelist: true,
             forbidNonWhitelisted: true,
             transform: true,
+            exceptionFactory: (errors) => {
+                const result = errors.map((error) => ({
+                    property: error.property,
+                    value: error.value,
+                    constraints: error.constraints,
+                }));
+                return new Error(JSON.stringify(result));
+            },
         }),
     );
+
+    // Filtro global de excepciones
+    app.useGlobalFilters(new GlobalExceptionFilter());
+
+    // Interceptor global de logging
+    app.useGlobalInterceptors(new LoggingInterceptor());
 
     // Configuración de Swagger
     const config = new DocumentBuilder()
