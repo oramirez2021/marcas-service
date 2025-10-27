@@ -7,6 +7,8 @@ import {
   InvalidManifiestoFormatException,
   InvalidGuiaFormatException 
 } from '../common/exceptions/business.exception';
+import { MarcarGuiaDto } from './dto/marcar-guia.dto';
+import { MarcarGuiaResponseDto } from './dto/marcar-guia-response.dto';
 
 @Injectable()
 export class OracleService {
@@ -347,6 +349,51 @@ export class OracleService {
         } catch (error) {
             this.logger.error('❌ Error en modificarMarcaGuia:', error);
             throw error;
+        } finally {
+            if (connection) {
+                await connection.close();
+            }
+        }
+    }
+
+    async marcarGuiaCourier(marcarDto: MarcarGuiaDto): Promise<MarcarGuiaResponseDto> {
+        const connection = await this.getConnection();
+        try {
+            this.logger.log(`🔧 Marcando guía: ${marcarDto.numeroDocumento}`);
+
+            const query = `{ call DOCUMENTOS.COURIER_CONSULTAS.fset_marcarGuiaCourier(?,?,?,?,?,?,?,?,?,?,?) }`;
+            
+            const result = await connection.execute(query, {
+                motivoMarca: marcarDto.motivoMarca,
+                idGuiaCourier: marcarDto.idGuiaCourier,
+                numeroDocumento: marcarDto.numeroDocumento,
+                codigoTipoDocumento: marcarDto.codigoTipoDocumento,
+                tipoDocumento: marcarDto.tipoDocumento,
+                idPersona: marcarDto.idPersona,
+                observacion: marcarDto.observacion,
+                respuesta: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+                tipoFiscalizacion: marcarDto.tipoFiscalizacion || null,
+                descripcion: marcarDto.descripcion || null,
+                propuesta: marcarDto.propuesta || null
+            });
+
+            const resultado = result.outBinds.respuesta;
+            const success = resultado === 'BIEN';
+
+            this.logger.log(`✅ Resultado marcado: ${resultado}`);
+
+            return {
+                success,
+                message: success ? 'Guía marcada exitosamente' : resultado,
+                resultado,
+                idGuia: marcarDto.idGuiaCourier,
+                motivoMarca: marcarDto.motivoMarca,
+                timestamp: new Date().toISOString()
+            };
+
+        } catch (error) {
+            this.logger.error('❌ Error marcando guía:', error);
+            throw new DatabaseConnectionException(error.message);
         } finally {
             if (connection) {
                 await connection.close();

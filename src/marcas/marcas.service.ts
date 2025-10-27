@@ -3,6 +3,7 @@ import { OracleService } from './oracle.service';
 import { ConsultaMarcasDto } from './dto/consulta-marcas.dto';
 import { ModificarMarcaDto } from './dto/modificar-marca.dto';
 import { ConsultaGuiasCourierDto } from './dto/consulta-guias-courier.dto';
+import { MarcarGuiaDto } from './dto/marcar-guia.dto';
 import { 
   InvalidMotivoMarcaException,
   GuiaNotFoundException 
@@ -48,5 +49,20 @@ export class MarcasService {
         this.logger.log(`Consultando guías courier para manifiesto: ${consultaDto.EdNroManifiesto}`);
         
         return await this.oracleService.consultarGuiasCourier(consultaDto.EdNroManifiesto, consultaDto.guiaCourier);
+    }
+
+    async marcarGuia(marcarDto: MarcarGuiaDto) {
+        this.logger.log(`Marcando guía: ${marcarDto.numeroDocumento}`);
+        
+        const motivosValidos = ['F', 'D', 'E', 'G', 'O', 'R', 'SEREMI', 'ISP', 'DGMN', 'SERNAPESCA', 'DF', 'PARTIDA'];
+        if (!motivosValidos.includes(marcarDto.motivoMarca)) {
+            throw new InvalidMotivoMarcaException(marcarDto.motivoMarca);
+        }
+
+        if (marcarDto.idGuiaCourier <= 0) {
+            throw new GuiaNotFoundException(marcarDto.idGuiaCourier);
+        }
+
+        return await this.oracleService.marcarGuiaCourier(marcarDto);
     }
 }
