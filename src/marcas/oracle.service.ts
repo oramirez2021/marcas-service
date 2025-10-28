@@ -400,4 +400,54 @@ export class OracleService {
       }
     }
   }
+
+  async cambiarMarcaCourier(cambiarDto: any): Promise<any> {
+    const connection = await this.getConnection();
+    try {
+      this.logger.log(`🔄 Cambiando marca de guía: ${cambiarDto.numeroDocumento}`);
+      this.logger.log(`📝 Motivo descarte: ${cambiarDto.motivoDescarte}`);
+
+      const query = `{ call DOCUMENTOS.COURIER_CONSULTAS.fset_desmarcarGuiaCourier(?,?,?,?,?,?,?,?,?,?,?,?) }`;
+      
+      const result = await connection.execute(query, {
+        motivoMarca: cambiarDto.motivoMarca,
+        idGuiaCourier: cambiarDto.idGuiaCourier,
+        numeroDocumento: cambiarDto.numeroDocumento,
+        codigoTipoDocumento: cambiarDto.codigoTipoDocumento,
+        tipoDocumento: cambiarDto.tipoDocumento,
+        idPersona: parseInt(cambiarDto.idPersona),
+        observacion: cambiarDto.observacion,
+        tipoFiscalizacion: cambiarDto.tipoFiscalizacion || null,
+        descripcion: cambiarDto.descripcion || null,
+        nombrePersona: null,
+        motivoDescarte: cambiarDto.motivoDescarte,
+        respuesta: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+      });
+
+      const resultado = result.outBinds.respuesta;
+      const success = resultado === 'BIEN';
+
+      this.logger.log(`✅ Resultado cambio de marca: ${resultado}`);
+
+      return {
+        success,
+        message: success 
+          ? 'Marca anterior descartada y nueva marca creada exitosamente' 
+          : resultado,
+        resultado,
+        idGuia: cambiarDto.idGuiaCourier,
+        motivoMarca: cambiarDto.motivoMarca,
+        motivoDescarte: cambiarDto.motivoDescarte,
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      this.logger.error('❌ Error cambiando marca:', error);
+      throw new DatabaseConnectionException(error.message);
+    } finally {
+      if (connection) {
+        await connection.close();
+      }
+    }
+  }
 }

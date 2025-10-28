@@ -5,7 +5,7 @@ import { ConsultaMarcasDto } from './dto/consulta-marcas.dto';
 import { ModificarMarcaDto } from './dto/modificar-marca.dto';
 import { ConsultaGuiasCourierDto } from './dto/consulta-guias-courier.dto';
 import { GuiasCourierResponseDto } from './dto/guias-courier-response.dto';
-import { MarcarGuiaDto } from './dto/marcar-guia.dto';
+import { MarcarGuiaDto, CambiarMarcaDto } from './dto/marcar-guia.dto';
 import { MarcarGuiaResponseDto } from './dto/marcar-guia-response.dto';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 
@@ -241,5 +241,86 @@ export class MarcasController {
   })
   async marcarGuia(@Body() marcarDto: MarcarGuiaDto) {
       return await this.marcasService.marcarGuia(marcarDto);
+  }
+
+  @Post('cambiar-marca')
+  @ApiOperation({ 
+      summary: 'Cambiar marca de guías courier (Nueva Marca)',
+      description: 'Descarta la marca anterior de una guía y crea una nueva. Replica la funcionalidad del botón "Nueva Marca" en webfiscalizaciones (ModMarca.jsp). Requiere motivoDescarte.'
+  })
+  @ApiBody({
+      type: CambiarMarcaDto,
+      description: 'Datos para cambiar la marca de las guías courier',
+      examples: {
+          ejemplo1: {
+              summary: 'Cambiar marca de F a ISP',
+              description: 'Ejemplo de cambio de marca de motivo F a ISP con motivo descarte',
+              value: {
+                  motivoMarca: 'ISP',
+                  guias: [
+                      {
+                          idGuiaCourier: 18912826,
+                          numeroDocumento: '843712644220',
+                          codigoTipoDocumento: 'GTIME',
+                          tipoDocumento: 'GUIA TIME'
+                      }
+                  ],
+                  idPersona: '12345',
+                  observacion: 'mercancia encontra',
+                  motivoDescarte: 'en realidad necesita',
+                  tipoFiscalizacion: 'COURIER',
+                  descripcion: 'visto bueno ISP'
+              }
+          },
+          ejemplo2: {
+              summary: 'Cambiar marca múltiples guías',
+              description: 'Cambiar marca de D a F en múltiples guías',
+              value: {
+                  motivoMarca: 'F',
+                  guias: [
+                      {
+                          idGuiaCourier: 18912826,
+                          numeroDocumento: '843712644220',
+                          codigoTipoDocumento: 'GTIME',
+                          tipoDocumento: 'GUIA TIME'
+                      },
+                      {
+                          idGuiaCourier: 18912827,
+                          numeroDocumento: '843712644221',
+                          codigoTipoDocumento: 'GTIME',
+                          tipoDocumento: 'GUIA TIME'
+                      }
+                  ],
+                  idPersona: '12345',
+                  observacion: 'Cambio masivo de marca',
+                  motivoDescarte: 'Corrección por error en motivo anterior',
+                  tipoFiscalizacion: 'COURIER',
+                  descripcion: 'Marcado correctivo'
+              }
+          }
+      }
+  })
+  @ApiResponse({ 
+      status: 200, 
+      description: 'Marcas cambiadas exitosamente',
+      type: MarcarGuiaResponseDto
+  })
+  @ApiResponse({ 
+      status: 400, 
+      description: 'Datos inválidos, motivo descarte faltante o muy corto',
+      type: ErrorResponseDto
+  })
+  @ApiResponse({ 
+      status: 404, 
+      description: 'Una o más guías no encontradas',
+      type: ErrorResponseDto
+  })
+  @ApiResponse({ 
+      status: 500, 
+      description: 'Error interno del servidor',
+      type: ErrorResponseDto
+  })
+  async cambiarMarca(@Body() cambiarDto: CambiarMarcaDto) {
+      return await this.marcasService.cambiarMarca(cambiarDto);
   }
 }

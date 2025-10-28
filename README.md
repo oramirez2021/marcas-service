@@ -10,6 +10,8 @@ Este servicio proporciona funcionalidades para consultar y modificar marcas de f
 
 - 🔍 **Consulta de guías con marcas**: Obtiene guías marcadas para fiscalización
 - ✏️ **Modificación de marcas**: Permite modificar el estado de las marcas
+- 🏷️ **Marcado de guías**: Crea marcas de fiscalización en guías courier
+- 🔄 **Cambio de marcas**: Descarta marcas anteriores y crea nuevas (funcionalidad "Nueva Marca")
 - 🗄️ **Integración Oracle**: Conecta directamente con la base de datos Oracle
 - 🐳 **Docker Ready**: Configurado para contenedores y Kubernetes
 - 📚 **Swagger UI**: Documentación automática de la API
@@ -146,11 +148,34 @@ curl -X POST "http://localhost:3001/marcas/marcar" \
         "tipoDocumento": "GUIA TIME"
       }
     ],
-    "idPersona": 12345,
+    "idPersona": "12345",
     "observacion": "Marcado automático",
     "tipoFiscalizacion": "FISCALIZA",
     "descripcion": "Test",
     "propuesta": "LIBRE"
+  }'
+```
+
+#### POST /marcas/cambiar-marca
+
+```bash
+curl -X POST "http://localhost:3001/marcas/cambiar-marca" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "motivoMarca": "ISP",
+    "guias": [
+      {
+        "idGuiaCourier": 18912826,
+        "numeroDocumento": "843712644220",
+        "codigoTipoDocumento": "GTIME",
+        "tipoDocumento": "GUIA TIME"
+      }
+    ],
+    "idPersona": "12345",
+    "observacion": "mercancia encontra",
+    "motivoDescarte": "en realidad necesita",
+    "tipoFiscalizacion": "COURIER",
+    "descripcion": "visto bueno ISP"
   }'
 ```
 

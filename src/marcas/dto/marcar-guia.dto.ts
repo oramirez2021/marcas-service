@@ -2,6 +2,7 @@ import { IsString, IsNumber, IsOptional, IsNotEmpty, IsArray, ValidateNested, Ar
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { GuiaDto } from './guia.dto';
+import { IntersectionType } from '@nestjs/swagger';
 
 export class MarcarGuiaDto {
   @ApiProperty({ 
@@ -70,4 +71,15 @@ export class MarcarGuiaDto {
   @IsString()
   @IsOptional()
   propuesta?: string;
+}
+
+export class CambiarMarcaDto extends MarcarGuiaDto {
+  @ApiProperty({ 
+    description: 'Motivo del descarte de la marca anterior (requerido para cambio de marca)',
+    example: 'en realidad necesita',
+    minLength: 3
+  })
+  @IsString()
+  @IsNotEmpty()
+  motivoDescarte: string;
 }
