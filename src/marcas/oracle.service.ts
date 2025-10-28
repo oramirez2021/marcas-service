@@ -356,48 +356,48 @@ export class OracleService {
         }
     }
 
-    async marcarGuiaCourier(marcarDto: MarcarGuiaDto): Promise<MarcarGuiaResponseDto> {
-        const connection = await this.getConnection();
-        try {
-            this.logger.log(`🔧 Marcando guía: ${marcarDto.numeroDocumento}`);
+  async marcarGuiaCourier(marcarDto: any): Promise<any> {
+    const connection = await this.getConnection();
+    try {
+      this.logger.log(`🔧 Marcando guía: ${marcarDto.numeroDocumento}`);
 
-            const query = `{ call DOCUMENTOS.COURIER_CONSULTAS.fset_marcarGuiaCourier(?,?,?,?,?,?,?,?,?,?,?) }`;
-            
-            const result = await connection.execute(query, {
-                motivoMarca: marcarDto.motivoMarca,
-                idGuiaCourier: marcarDto.idGuiaCourier,
-                numeroDocumento: marcarDto.numeroDocumento,
-                codigoTipoDocumento: marcarDto.codigoTipoDocumento,
-                tipoDocumento: marcarDto.tipoDocumento,
-                idPersona: marcarDto.idPersona,
-                observacion: marcarDto.observacion,
-                respuesta: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
-                tipoFiscalizacion: marcarDto.tipoFiscalizacion || null,
-                descripcion: marcarDto.descripcion || null,
-                propuesta: marcarDto.propuesta || null
-            });
+      const query = `{ call DOCUMENTOS.COURIER_CONSULTAS.fset_marcarGuiaCourier(?,?,?,?,?,?,?,?,?,?,?) }`;
+      
+      const result = await connection.execute(query, {
+        motivoMarca: marcarDto.motivoMarca,
+        idGuiaCourier: marcarDto.idGuiaCourier,
+        numeroDocumento: marcarDto.numeroDocumento,
+        codigoTipoDocumento: marcarDto.codigoTipoDocumento,
+        tipoDocumento: marcarDto.tipoDocumento,
+        idPersona: parseInt(marcarDto.idPersona),
+        observacion: marcarDto.observacion,
+        respuesta: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+        tipoFiscalizacion: marcarDto.tipoFiscalizacion || null,
+        descripcion: marcarDto.descripcion || null,
+        propuesta: null
+      });
 
-            const resultado = result.outBinds.respuesta;
-            const success = resultado === 'BIEN';
+      const resultado = result.outBinds.respuesta;
+      const success = resultado === 'BIEN';
 
-            this.logger.log(`✅ Resultado marcado: ${resultado}`);
+      this.logger.log(`✅ Resultado marcado: ${resultado}`);
 
-            return {
-                success,
-                message: success ? 'Guía marcada exitosamente' : resultado,
-                resultado,
-                idGuia: marcarDto.idGuiaCourier,
-                motivoMarca: marcarDto.motivoMarca,
-                timestamp: new Date().toISOString()
-            };
+      return {
+        success,
+        message: success ? 'Guía marcada exitosamente' : resultado,
+        resultado,
+        idGuia: marcarDto.idGuiaCourier,
+        motivoMarca: marcarDto.motivoMarca,
+        timestamp: new Date().toISOString()
+      };
 
-        } catch (error) {
-            this.logger.error('❌ Error marcando guía:', error);
-            throw new DatabaseConnectionException(error.message);
-        } finally {
-            if (connection) {
-                await connection.close();
-            }
-        }
+    } catch (error) {
+      this.logger.error('❌ Error marcando guía:', error);
+      throw new DatabaseConnectionException(error.message);
+    } finally {
+      if (connection) {
+        await connection.close();
+      }
     }
+  }
 }

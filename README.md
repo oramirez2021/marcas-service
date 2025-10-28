@@ -107,28 +107,51 @@ JWT_EXPIRES_IN=1h
 
 ### API Endpoints
 
-#### Consultar Guías con Marcas
+#### GET /marcas/consulta
 
-```http
-GET /marcas/consulta?idManifiesto=12345&tipoAccion=VIS&guiaCourier=GT123456
+```bash
+curl -X GET "http://localhost:3001/marcas/consulta?idManifiesto=12345&tipoAccion=VIS&guiaCourier=GT123456"
 ```
 
-**Parámetros:**
-- `idManifiesto` (required): ID del manifiesto
-- `tipoAccion` (optional): Tipo de acción (VIS, etc.)
-- `guiaCourier` (optional): Número de guía específica
+#### POST /marcas/modificar
 
-#### Modificar Marca
+```bash
+curl -X POST "http://localhost:3001/marcas/modificar" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "idGuia": 67890,
+    "motivoMarca": "F",
+    "observacion": "Revisión manual requerida"
+  }'
+```
 
-```http
-POST /marcas/modificar
-Content-Type: application/json
+#### GET /marcas/guias-courier
 
-{
-  "idGuia": 67890,
-  "motivoMarca": "F",
-  "observacion": "Revisión manual requerida"
-}
+```bash
+curl -X GET "http://localhost:3001/marcas/guias-courier?EdNroManifiesto=12345&guiaCourier=843712644220"
+```
+
+#### POST /marcas/marcar
+
+```bash
+curl -X POST "http://localhost:3001/marcas/marcar" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "motivoMarca": "F",
+    "guias": [
+      {
+        "idGuiaCourier": 18912826,
+        "numeroDocumento": "843712644220",
+        "codigoTipoDocumento": "GTIME",
+        "tipoDocumento": "GUIA TIME"
+      }
+    ],
+    "idPersona": 12345,
+    "observacion": "Marcado automático",
+    "tipoFiscalizacion": "FISCALIZA",
+    "descripcion": "Test",
+    "propuesta": "LIBRE"
+  }'
 ```
 
 ### Swagger UI

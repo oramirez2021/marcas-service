@@ -162,81 +162,84 @@ export class MarcasController {
         return await this.marcasService.consultarGuiasCourier(consultaDto);
     }
 
-    @Post('marcar')
-    @ApiOperation({ 
-        summary: 'Marcar guía courier',
-        description: 'Marca una guía courier con motivo de fiscalización específico. Replica la funcionalidad del botón Aceptar en webfiscalizaciones.'
-    })
-    @ApiBody({
-        type: MarcarGuiaDto,
-        description: 'Datos para marcar la guía courier',
-        examples: {
-            ejemplo1: {
-                summary: 'Marcar guía con motivo F',
-                description: 'Ejemplo de marcado con motivo F (Fiscalización)',
-                value: {
-                    motivoMarca: 'F',
-                    idGuiaCourier: 18912826,
-                    numeroDocumento: '843712644220',
-                    codigoTipoDocumento: 'GTIME',
-                    tipoDocumento: 'GUIA TIME',
-                    idPersona: 12345,
-                    observacion: 'Revisión manual requerida por irregularidades detectadas',
-                    tipoFiscalizacion: 'FISCALIZA',
-                    descripcion: 'Marcado automático',
-                    propuesta: 'LIBRE'
-                }
-            },
-            ejemplo2: {
-                summary: 'Marcar guía con motivo D',
-                description: 'Ejemplo de marcado con motivo D (Declaración)',
-                value: {
-                    motivoMarca: 'D',
-                    idGuiaCourier: 18912827,
-                    numeroDocumento: '843712644221',
-                    codigoTipoDocumento: 'GTIME',
-                    tipoDocumento: 'GUIA TIME',
-                    idPersona: 12345,
-                    observacion: 'Declaración incompleta, requiere documentación adicional',
-                    tipoFiscalizacion: 'FISCALIZA',
-                    descripcion: 'Marcado por declaración',
-                    propuesta: 'LIBRE'
-                }
-            }
-        }
-    })
-    @ApiResponse({ 
-        status: 200, 
-        description: 'Guía marcada exitosamente',
-        type: MarcarGuiaResponseDto,
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: true },
-                message: { type: 'string', example: 'Guía marcada exitosamente' },
-                resultado: { type: 'string', example: 'BIEN' },
-                idGuia: { type: 'number', example: 18912826 },
-                motivoMarca: { type: 'string', example: 'F' },
-                timestamp: { type: 'string', format: 'date-time', example: '2025-10-27T14:47:35.149Z' }
-            }
-        }
-    })
-    @ApiResponse({ 
-        status: 400, 
-        description: 'Datos de entrada inválidos o motivo de marca inválido',
-        type: ErrorResponseDto
-    })
-    @ApiResponse({ 
-        status: 404, 
-        description: 'Guía no encontrada',
-        type: ErrorResponseDto
-    })
-    @ApiResponse({ 
-        status: 500, 
-        description: 'Error interno del servidor o error de conexión a base de datos',
-        type: ErrorResponseDto
-    })
-    async marcarGuia(@Body() marcarDto: MarcarGuiaDto) {
-        return await this.marcasService.marcarGuia(marcarDto);
-    }
+  @Post('marcar')
+  @ApiOperation({ 
+      summary: 'Marcar guías courier',
+      description: 'Marca una o múltiples guías courier con motivo de fiscalización específico. Replica la funcionalidad del botón Aceptar en webfiscalizaciones.'
+  })
+  @ApiBody({
+      type: MarcarGuiaDto,
+      description: 'Datos para marcar las guías courier',
+      examples: {
+          ejemplo1: {
+              summary: 'Marcar una guía con motivo F',
+              description: 'Ejemplo de marcado con una guía y motivo F (Fiscalización)',
+              value: {
+                  motivoMarca: 'F',
+                  guias: [
+                      {
+                          idGuiaCourier: 18912826,
+                          numeroDocumento: '843712644220',
+                          codigoTipoDocumento: 'GTIME',
+                          tipoDocumento: 'GUIA TIME'
+                      }
+                  ],
+                  idPersona: 12345,
+                  observacion: 'Revisión manual requerida',
+                  tipoFiscalizacion: 'FISCALIZA',
+                  descripcion: 'Marcado automático',
+                  propuesta: 'LIBRE'
+              }
+          },
+          ejemplo2: {
+              summary: 'Marcar múltiples guías con motivo D',
+              description: 'Ejemplo de marcado con múltiples guías y motivo D (Declaración)',
+              value: {
+                  motivoMarca: 'D',
+                  guias: [
+                      {
+                          idGuiaCourier: 18912826,
+                          numeroDocumento: '843712644220',
+                          codigoTipoDocumento: 'GTIME',
+                          tipoDocumento: 'GUIA TIME'
+                      },
+                      {
+                          idGuiaCourier: 18912827,
+                          numeroDocumento: '843712644221',
+                          codigoTipoDocumento: 'GTIME',
+                          tipoDocumento: 'GUIA TIME'
+                      }
+                  ],
+                  idPersona: 12345,
+                  observacion: 'Marcado masivo por declaración incompleta',
+                  tipoFiscalizacion: 'FISCALIZA',
+                  descripcion: 'Marcado por declaración',
+                  propuesta: 'LIBRE'
+              }
+          }
+      }
+  })
+  @ApiResponse({ 
+      status: 200, 
+      description: 'Guías marcadas exitosamente',
+      type: MarcarGuiaResponseDto
+  })
+  @ApiResponse({ 
+      status: 400, 
+      description: 'Datos de entrada inválidos, motivo de marca inválido o array de guías vacío',
+      type: ErrorResponseDto
+  })
+  @ApiResponse({ 
+      status: 404, 
+      description: 'Una o más guías no encontradas',
+      type: ErrorResponseDto
+  })
+  @ApiResponse({ 
+      status: 500, 
+      description: 'Error interno del servidor o error de conexión a base de datos',
+      type: ErrorResponseDto
+  })
+  async marcarGuia(@Body() marcarDto: MarcarGuiaDto) {
+      return await this.marcasService.marcarGuia(marcarDto);
+  }
 }

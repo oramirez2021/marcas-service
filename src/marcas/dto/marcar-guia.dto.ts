@@ -1,5 +1,7 @@
-import { IsString, IsNumber, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsNotEmpty, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { GuiaDto } from './guia.dto';
 
 export class MarcarGuiaDto {
   @ApiProperty({ 
@@ -12,42 +14,30 @@ export class MarcarGuiaDto {
   motivoMarca: string;
 
   @ApiProperty({ 
-    description: 'ID de la guía courier a marcar',
-    example: 18912826
+    description: 'Array de guías a marcar (mínimo 1)',
+    type: [GuiaDto],
+    example: [
+      {
+        idGuiaCourier: 18912826,
+        numeroDocumento: '843712644220',
+        codigoTipoDocumento: 'GTIME',
+        tipoDocumento: 'GUIA TIME'
+      }
+    ]
   })
-  @IsNumber()
-  idGuiaCourier: number;
-
-  @ApiProperty({ 
-    description: 'Número de la guía',
-    example: '843712644220'
-  })
-  @IsString()
-  @IsNotEmpty()
-  numeroDocumento: string;
-
-  @ApiProperty({ 
-    description: 'Código del tipo de documento',
-    example: 'GTIME'
-  })
-  @IsString()
-  @IsNotEmpty()
-  codigoTipoDocumento: string;
-
-  @ApiProperty({ 
-    description: 'Tipo de documento',
-    example: 'GUIA TIME'
-  })
-  @IsString()
-  @IsNotEmpty()
-  tipoDocumento: string;
+  @IsArray()
+  @ArrayMinSize(1, { message: 'Debe seleccionar al menos una guía' })
+  @ValidateNested({ each: true })
+  @Type(() => GuiaDto)
+  guias: GuiaDto[];
 
   @ApiProperty({ 
     description: 'ID de la persona que marca',
-    example: 12345
+    example: '12345'
   })
-  @IsNumber()
-  idPersona: number;
+  @IsString()
+  @IsNotEmpty()
+  idPersona: string;
 
   @ApiProperty({ 
     description: 'Observación de la marca',
